@@ -1,0 +1,2 @@
+class SimpleArchive:
+    pass

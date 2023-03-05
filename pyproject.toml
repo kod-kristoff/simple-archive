@@ -9,6 +9,7 @@ packages = [{include = "simple_archive"}]
 
 [tool.poetry.dependencies]
 python = ">=3.8"
+typer = "^0.7.0"
 
 
 [tool.poetry.group.dev.dependencies]
