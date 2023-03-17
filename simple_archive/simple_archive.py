@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 from typing import Optional
 from xml.etree.ElementTree import Element, ElementTree, SubElement
+from zipfile import ZipFile, ZIP_DEFLATED
 
 import pydantic
 
@@ -115,6 +116,29 @@ class SimpleArchive:
             self.write_contents_file(item, item_path)
             self.copy_files(item, item_path)
             self.write_metadata(item, item_path)
+
+    def write_to_zip(self, output_path: Path) -> None:
+        with ZipFile(output_path, "w", compression=ZIP_DEFLATED) as zipfile:
+            for item_nr, item in enumerate(self.items):
+                item_path = f"item_{item_nr:03d}"
+                # zipfile.mkdir(item_path)
+                # copy files
+                for file_path in item.files:
+                    src_path = self.input_folder / file_path
+                    dst_path = f"{item_path}/{file_path}"
+                    zipfile.write(src_path, dst_path)
+                # write contents
+                contents_path = f"{item_path}/contents"
+                with zipfile.open(contents_path, "w") as contents_file:
+                    for file_path in item.files:
+                        contents_file.write(file_path.name.encode("utf-8"))
+                        contents_file.write(b"\n")
+                # write metadata
+                dublin_core_xml = build_xml(item.dc)
+                dublin_core_path = f"{item_path}/dublin_core.xml"
+                logger.info("writing '%s'in zip-archive ", dublin_core_path)
+                with zipfile.open(dublin_core_path, "w") as dublin_core_file:
+                    dublin_core_xml.write(dublin_core_file)
 
     def write_contents_file(self, item: Item, item_path: Path) -> None:
         contents_path = item_path / "contents"

@@ -10,8 +10,8 @@ app = typer.Typer()
 
 
 @app.command()
-def main(input_file: Path, output: Optional[Path] = None):
+def main(input_file: Path, output: Optional[Path] = None, zip: bool = False):
     """Create Simple Archive from an csv."""
     logging.basicConfig(level=logging.DEBUG)
     uc = CreateSimpleArchiveFromCSVWriteToPath()
-    uc.execute(input_path=input_file, output_path=output)
+    uc.execute(input_path=input_file, output_path=output, create_zip=zip)
