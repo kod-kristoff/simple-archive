@@ -2,24 +2,31 @@
 name = "simple-archive"
 version = "0.1.0"
 description = "CLI and library for working with Simple Archive Formaat"
-authors = ["Kristoffer Andersson <kod.kristoff@gmail.com>"]
+authors = ["Kristoffer Andersson <kristoffer.andersson@gu.se>"]
 license = "MIT"
 readme = "README.md"
 packages = [{include = "simple_archive"}]
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = "^3.8"
 typer = "^0.7.0"
+pydantic = "^1.10.6"
 
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
+mypy = "^1.1.1"
+pytest = "^7.2.2"
+pytest-cov = "^4.0.0"
 
 [tool.poetry.group.ci]
 optional = true
 
 [tool.poetry.group.ci.dependencies]
 ruff = "^0.0.252"
+
+[tool.poetry.scripts]
+safar = "simple_archive.cli:app"
 
 [build-system]
 requires = ["poetry-core"]
