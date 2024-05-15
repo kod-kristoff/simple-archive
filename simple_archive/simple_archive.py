@@ -5,7 +5,7 @@ import logging
 import shutil
 from datetime import date
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -35,7 +35,7 @@ class DublinCoreElement(pydantic.BaseModel):
 class DublinCore(pydantic.BaseModel):
     """Dublin Core model."""
 
-    elements: List[DublinCoreElement]
+    elements: list[DublinCoreElement]
 
 
 def build_xml(dc: DublinCore) -> ElementTree:
@@ -93,7 +93,7 @@ def dcvalue(
 class Item(pydantic.BaseModel):
     """Simple Archive Item model."""
 
-    files: List[Path]
+    files: list[Path]
     dc: DublinCore
 
     @pydantic.validator("files", pre=True)

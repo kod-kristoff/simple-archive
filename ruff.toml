@@ -1,6 +1,6 @@
 line-length = 97
 
-target-version = "py38"
+target-version = "py39"
 
 [lint]
 select = [
