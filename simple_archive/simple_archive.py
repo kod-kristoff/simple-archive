@@ -5,7 +5,7 @@ import logging
 import shutil
 from datetime import date
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -96,14 +96,14 @@ class Item(pydantic.BaseModel):
     files: list[Path]
     dc: DublinCore
 
-    @pydantic.validator("files", pre=True)
+    @pydantic.field_validator("files", mode="before")
     @classmethod
-    def split_str(cls, v):  # noqa: ANN206, D102, ANN001
+    def split_str(cls, v: Any) -> Any:  # noqa: D102
         return v.split("||") if isinstance(v, str) else v
 
-    @pydantic.root_validator(pre=True)
+    @pydantic.model_validator(mode="before")
     @classmethod
-    def collect_dc_fields(cls, values):  # noqa: ANN206, D102, ANN001
+    def collect_dc_fields(cls, values: Any) -> dict:  # noqa: D102
         new_values = {}
         for field, value in values.items():
             if field.startswith("dc."):
