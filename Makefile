@@ -58,7 +58,7 @@ help:
 
 PLATFORM := `uname -o`
 REPO := "simple-archive"
-PROJECT_SRC := "simple-archive"
+PROJECT_SRC := "simple_archive"
 
 ifeq (${VIRTUAL_ENV},)
   VENV_NAME = .venv
