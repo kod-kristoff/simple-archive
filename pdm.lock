@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:04bed8f475c0a9defe135496f258abc17ccfc338e9e95354319ae34cd71d48c8"
+content_hash = "sha256:05b0dfd651ec6385a05a93ac93cfca86a1c31dbfe7066769b4348cf021bdc267"
 
 [[package]]
 name = "bump-my-version"
