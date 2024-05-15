@@ -1,6 +1,6 @@
 [project]
 name = "simple-archive"
-version = "0.0.1"
+version = "0.1.0"
 description = "CLI and library for working with Simple Archive Format"
 authors = [
     { name = "Språkbanken Text", email = "sb-info@svenska.gu.se" },
