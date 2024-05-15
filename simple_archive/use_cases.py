@@ -1,6 +1,7 @@
 """Use cases for simple archive."""
 
 from pathlib import Path
+from typing import Optional, Union
 
 from simple_archive import SimpleArchive
 
@@ -11,14 +12,14 @@ class CreateSimpleArchiveFromCSVWriteToPath:
     def execute(  # noqa: PLR6301
         self,
         input_path: Path,
-        output_path: Path | None = None,
+        output_path: Optional[Path] = None,
         create_zip: bool = False,
     ) -> None:
         """Create a Simple Archive from a CSV file and write to Path.
 
         Args:
             input_path (Path): path to csv file
-            output_path (Path | None, optional): A directory or an filename with extension '.zip'. Defaults to None.
+            output_path (Optional[Path], optional): A directory or an filename with extension '.zip'. Defaults to None.
             create_zip (bool, optional): if True writes a zip file. Defaults to False.
         """  # noqa: E501
         if not output_path:
@@ -40,13 +41,13 @@ class CreateSimpleArchiveFromCSVWriteToPath:
             simple_archive.write_to_path(output_path)
 
 
-def create_unique_path(base_path: Path, base_stem: str, suffix: str | None = None) -> Path:
+def create_unique_path(base_path: Path, base_stem: str, suffix: Optional[str] = None) -> Path:
     """Create a unique path in base_path using base_stem and optional suffix.
 
     Args:
         base_path (Path): the path to work with
         base_stem (str): the stem to use for the path
-        suffix (str | None, optional): suffix to use. Defaults to None.
+        suffix (Optional[str], optional): suffix to use. Defaults to None.
 
     Returns:
         Path: an unique path in base_path
@@ -59,13 +60,13 @@ def create_unique_path(base_path: Path, base_stem: str, suffix: str | None = Non
     return new_path
 
 
-def mk_path(base: Path, stem: Path | str, suffix: str | None) -> Path:
+def mk_path(base: Path, stem: Union[Path, str], suffix: Optional[str]) -> Path:
     """Create a path from base and stem and suffix is given.
 
     Args:
         base (Path): the base to use
         stem (Path | str): the stem to add
-        suffix (str | None): the optional suffix to add
+        suffix (Optional[str]): the optional suffix to add
 
     Returns:
         Path: the create path

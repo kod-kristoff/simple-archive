@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Optional
 
 import typer
 
@@ -12,7 +13,9 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    input_file: Path, output: Path | None = None, create_zip: bool = typer.Option(False, "--zip")
+    input_file: Path,
+    output: Optional[Path] = None,
+    create_zip: bool = typer.Option(False, "--zip"),
 ) -> None:
     """Create Simple Archive from an csv."""
     logging.basicConfig(level=logging.DEBUG)

@@ -5,6 +5,7 @@ import logging
 import shutil
 from datetime import date
 from pathlib import Path
+from typing import List, Optional
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -27,14 +28,14 @@ class DublinCoreElement(pydantic.BaseModel):
 
     element: str
     value: str
-    qualifier: str | None = None
-    language: str | None = None
+    qualifier: Optional[str] = None
+    language: Optional[str] = None
 
 
 class DublinCore(pydantic.BaseModel):
     """Dublin Core model."""
 
-    elements: list[DublinCoreElement]
+    elements: List[DublinCoreElement]
 
 
 def build_xml(dc: DublinCore) -> ElementTree:
@@ -61,18 +62,18 @@ def build_xml(dc: DublinCore) -> ElementTree:
 def dcvalue(
     parent: Element,
     element: str,
-    qualifier: str | None = None,
-    language: str | None = None,
-    text: str | None = None,
+    qualifier: Optional[str] = None,
+    language: Optional[str] = None,
+    text: Optional[str] = None,
 ) -> Element:
     """Create a dcvalue subelement of parent.
 
     Args:
         parent (Element): the element to use as parent
         element (str): the element tag
-        qualifier (str | None, optional): qualifier to use. Defaults to None.
-        language (str | None, optional): language if any. Defaults to None.
-        text (str | None, optional): Text to set on elem. Defaults to None.
+        qualifier (Optional[str], optional): qualifier to use. Defaults to None.
+        language (Optional[str], optional): language if any. Defaults to None.
+        text (Optional[str], optional): Text to set on elem. Defaults to None.
 
     Returns:
         Element: _description_
@@ -92,7 +93,7 @@ def dcvalue(
 class Item(pydantic.BaseModel):
     """Simple Archive Item model."""
 
-    files: list[Path]
+    files: List[Path]
     dc: DublinCore
 
     @pydantic.validator("files", pre=True)
