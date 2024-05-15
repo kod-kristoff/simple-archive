@@ -60,8 +60,13 @@ def create_unique_path(base_path: Path, base_stem: str, suffix: Optional[str] = 
     return new_path
 
 
-def mk_path(base: Path, stem: Union[Path, str], suffix: Optional[str]) -> Path:
+def mk_path(base: Path, stem: Union[Path, str], suffix: Optional[str] = None) -> Path:
     """Create a path from base and stem and suffix is given.
+
+    >>> str(mk_path(Path('tmp'), 'simple'))
+    'tmp/simple'
+    >>> str(mk_path(Path('tmp'), 'simple', 'zip'))
+    'tmp/simple.zip'
 
     Args:
         base (Path): the base to use
