@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Changed
+
+- Update pydantic to v2
+
+### Fixed
+
+- Don't use strict keyword in zip-call
+
+### Miscellaneous Tasks
+
+- Set minimum python version to 3.9
+
 ## [0.1.0] - 2024-05-15
 
 ### Added
