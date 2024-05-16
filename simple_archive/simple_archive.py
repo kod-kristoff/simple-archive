@@ -5,7 +5,7 @@ import logging
 import shutil
 from datetime import date
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Optional
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -35,7 +35,7 @@ class DublinCoreElement(pydantic.BaseModel):
 class DublinCore(pydantic.BaseModel):
     """Dublin Core model."""
 
-    elements: List[DublinCoreElement]
+    elements: list[DublinCoreElement]
 
 
 def build_xml(dc: DublinCore) -> ElementTree:
@@ -93,28 +93,33 @@ def dcvalue(
 class Item(pydantic.BaseModel):
     """Simple Archive Item model."""
 
-    files: List[Path]
+    files: list[Path]
     dc: DublinCore
 
-    @pydantic.validator("files", pre=True)
+    @pydantic.field_validator("files", mode="before")
     @classmethod
-    def split_str(cls, v):  # noqa: ANN206, D102, ANN001
+    def split_str(cls, v: Any) -> Any:  # noqa: D102
         return v.split("||") if isinstance(v, str) else v
 
-    @pydantic.root_validator(pre=True)
+    @pydantic.model_validator(mode="before")
     @classmethod
-    def collect_dc_fields(cls, values):  # noqa: ANN206, D102, ANN001
-        new_values = {}
+    def collect_dc_fields(cls, values: Any) -> dict:  # noqa: D102
+        new_values: dict[str, dict[str, list[dict[str, str]]]] = {}
         for field, value in values.items():
             if field.startswith("dc."):
                 if "dc" not in new_values:
                     new_values["dc"] = {}
                 if "elements" not in new_values["dc"]:
                     new_values["dc"]["elements"] = []
-                subfields = field.split(".")
+                subfields: list[str] = field.split(".")
                 element = {"value": value}
                 for sub_field, key in zip(
-                    subfields[1:], ("element", "qualifier", "language"), strict=False
+                    subfields[1:],
+                    (
+                        "element",
+                        "qualifier",
+                        "language",
+                    ),  # strict=False TODO: use this when Python 3.9 is dropped, see https://github.com/spraakbanken/simple-archive/issuse/5
                 ):
                     element[key] = sub_field  # noqa: PERF403
                 new_values["dc"]["elements"].append(element)

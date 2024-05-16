@@ -8,8 +8,11 @@ authors = [
 ]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.8.1"
-dependencies = ["typer<1.0.0,>=0.7.0", "pydantic<2.0.0,>=1.10.6"]
+requires-python = ">=3.9"
+dependencies = [
+    "typer<1.0.0,>=0.7.0",
+    "pydantic>=2",
+]
 
 [project.scripts]
 safar = "simple_archive.cli:app"
