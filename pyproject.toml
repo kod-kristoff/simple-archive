@@ -9,9 +9,26 @@ authors = [
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = [
-    "typer<1.0.0,>=0.7.0",
-    "pydantic>=2",
+dependencies = ["typer<1.0.0,>=0.7.0", "pydantic>=2"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    # "Development Status :: 4 - Beta",
+    # "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Unix",
+    "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    # "uncomment if you test on these interpreters:",
+    # "Programming Language :: Python :: Implementation :: IronPython",
+    # "Programming Language :: Python :: Implementation :: Jython",
+    # "Programming Language :: Python :: Implementation :: Stackless",
+    "Topic :: Utilities",
 ]
 
 [project.scripts]
