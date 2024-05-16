@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### Documentation
+
+- Add pyproject classifiers
+
+## [0.2.0] - 2024-05-16
+
 ### Changed
 
 - Update pydantic to v2
