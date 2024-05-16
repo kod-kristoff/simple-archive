@@ -104,17 +104,22 @@ class Item(pydantic.BaseModel):
     @pydantic.model_validator(mode="before")
     @classmethod
     def collect_dc_fields(cls, values: Any) -> dict:  # noqa: D102
-        new_values = {}
+        new_values: dict[str, dict[str, list[dict[str, str]]]] = {}
         for field, value in values.items():
             if field.startswith("dc."):
                 if "dc" not in new_values:
                     new_values["dc"] = {}
                 if "elements" not in new_values["dc"]:
                     new_values["dc"]["elements"] = []
-                subfields = field.split(".")
+                subfields: list[str] = field.split(".")
                 element = {"value": value}
                 for sub_field, key in zip(
-                    subfields[1:], ("element", "qualifier", "language"), strict=False
+                    subfields[1:],
+                    (
+                        "element",
+                        "qualifier",
+                        "language",
+                    ),  # strict=False TODO: use this when Python 3.9 is dropped, see https://github.com/spraakbanken/simple-archive/issuse/5
                 ):
                     element[key] = sub_field  # noqa: PERF403
                 new_values["dc"]["elements"].append(element)
