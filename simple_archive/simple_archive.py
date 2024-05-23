@@ -128,7 +128,9 @@ class Item(pydantic.BaseModel):
     @pydantic.field_validator("files", mode="before")
     @classmethod
     def split_str(cls, v: Any) -> Any:  # noqa: D102
-        return v.split("||") if isinstance(v, str) else v
+        if isinstance(v, str):
+            return v.split("||") if v else []
+        return v
 
     @pydantic.model_validator(mode="before")
     @classmethod
