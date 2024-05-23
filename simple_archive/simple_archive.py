@@ -2,10 +2,11 @@
 
 import csv
 import logging
+import re
 import shutil
 from datetime import date
 from pathlib import Path
-from typing import Any, Optional
+from typing import IO, Any, Optional, Union
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -32,23 +33,45 @@ class DublinCoreElement(pydantic.BaseModel):
     language: Optional[str] = None
 
 
-class DublinCore(pydantic.BaseModel):
+LANGUAGE_IN_SQUARE_BRACKETS = re.compile(r"\[([a-zA-Z_]+)\]")
+
+
+class DublinCore(pydantic.RootModel):
     """Dublin Core model."""
 
-    elements: list[DublinCoreElement]
+    root: list[DublinCoreElement]
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def build_list_from_dict_if_needed(cls, values: Any) -> list:  # noqa: D102
+        if isinstance(values, list):
+            return values
+        new_values = []
+        for key, value in values.items():
+            if isinstance(value, str):
+                new_value = {"element": key, "value": value}
+                if lang := LANGUAGE_IN_SQUARE_BRACKETS.search(key):
+                    new_value["element"] = key[: lang.start()]
+                    new_value["language"] = lang.group(1)
+                new_values.append(new_value)
+            elif isinstance(value, dict):
+                value["element"] = key
+                new_values.append(value)
+        return new_values
 
 
-def build_xml(dc: DublinCore) -> ElementTree:
+def build_xml(dc: DublinCore, *, schema: str) -> ElementTree:
     """Build an ElementTree from a DublinCore model.
 
     Args:
         dc (DublinCore): the model to build from
+        schema (str): the schema to annotate dublin_core with
 
     Returns:
         ElementTree: the resulting ElementTree
     """
-    root = Element("dublin_core")
-    for element in dc.elements:
+    root = Element("dublin_core", attrib={"schema": schema})
+    for element in dc.root:
         dcvalue(
             root,
             element=element.element,
@@ -90,11 +113,17 @@ def dcvalue(
     return elem
 
 
+class Metadata(pydantic.BaseModel):
+    """Model of metadata."""
+
+    dc: DublinCore
+
+
 class Item(pydantic.BaseModel):
     """Simple Archive Item model."""
 
     files: list[Path]
-    dc: DublinCore
+    metadata: Metadata
 
     @pydantic.field_validator("files", mode="before")
     @classmethod
@@ -103,36 +132,33 @@ class Item(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="before")
     @classmethod
-    def collect_dc_fields(cls, values: Any) -> dict:  # noqa: D102
-        new_values: dict[str, dict[str, list[dict[str, str]]]] = {}
-        for field, value in values.items():
-            if field.startswith("dc."):
-                if "dc" not in new_values:
-                    new_values["dc"] = {}
-                if "elements" not in new_values["dc"]:
-                    new_values["dc"]["elements"] = []
-                subfields: list[str] = field.split(".")
-                element = {"value": value}
-                for sub_field, key in zip(
-                    subfields[1:],
-                    (
-                        "element",
-                        "qualifier",
-                        "language",
-                    ),  # strict=False TODO: use this when Python 3.9 is dropped, see https://github.com/spraakbanken/simple-archive/issuse/5
-                ):
-                    element[key] = sub_field  # noqa: PERF403
-                new_values["dc"]["elements"].append(element)
-                # new_values["dc"][field[3:]] = value
+    def unflatten_values(cls, values: Any) -> dict:  # noqa: D102
+        nested: dict = {}
+        for key, value in values.items():
+            parts = key.split(".")
+            sub = nested
+
+            for part in parts[:-1]:
+                if part not in sub:
+                    sub[part] = {}
+                sub = sub[part]
+
+            sub[parts[-1]] = value
+        new_values: dict = {"metadata": {}}
+        for key, value in nested.items():
+            if key == "files":
+                new_values["files"] = value
+            elif isinstance(value, pydantic.BaseModel):
+                new_values[key] = value
             else:
-                new_values[field] = value
+                new_values["metadata"][key] = value
         return new_values
 
 
 class SimpleArchive:
     """Simple Archive model."""
 
-    def __init__(self, input_folder: Path, items: list) -> None:  # noqa: D107
+    def __init__(self, input_folder: Path, items: list[Item]) -> None:  # noqa: D107
         self.input_folder = input_folder
         self.items = items
 
@@ -154,7 +180,9 @@ class SimpleArchive:
 
             self.write_contents_file(item, item_path)
             self.copy_files(item, item_path)
-            self.write_metadata(item, item_path)
+            build_and_write_metadata(
+                item.metadata.dc, schema="dc", path_or_file=item_path / "dublin_core.xml"
+            )
 
     def write_to_zip(self, output_path: Path) -> None:  # noqa: D102
         with ZipFile(output_path, "w", compression=ZIP_DEFLATED) as zipfile:
@@ -173,11 +201,12 @@ class SimpleArchive:
                         contents_file.write(file_path.name.encode("utf-8"))
                         contents_file.write(b"\n")
                 # write metadata
-                dublin_core_xml = build_xml(item.dc)
                 dublin_core_path = f"{item_path}/dublin_core.xml"
                 logger.info("writing '%s'in zip-archive ", dublin_core_path)
                 with zipfile.open(dublin_core_path, "w") as dublin_core_file:
-                    dublin_core_xml.write(dublin_core_file)
+                    build_and_write_metadata(
+                        item.metadata.dc, schema="dc", path_or_file=dublin_core_file
+                    )
 
     def write_contents_file(self, item: Item, item_path: Path) -> None:  # noqa: PLR6301, D102
         contents_path = item_path / "contents"
@@ -194,8 +223,16 @@ class SimpleArchive:
             logger.info("  copying '%s to '%s'", src_path, dst_path)
             shutil.copy(src_path, dst_path)
 
-    def write_metadata(self, item: Item, item_path: Path) -> None:  # noqa: D102, PLR6301
-        dublin_core_xml = build_xml(item.dc)
-        dublin_core_path = item_path / "dublin_core.xml"
-        logger.info("writing '%s'", dublin_core_path)
-        dublin_core_xml.write(dublin_core_path)
+
+def build_and_write_metadata(
+    metadata: DublinCore, schema: str, path_or_file: Union[Path, IO[bytes]]
+) -> None:
+    """Build and write metadata.
+
+    Args:
+        metadata (DublinCore): metadata to build
+        schema (str): schema to use
+        path_or_file (Union[Path, IO[bytes]]): path or file to write to
+    """
+    metadata_xml = build_xml(metadata, schema=schema)
+    metadata_xml.write(path_or_file)
