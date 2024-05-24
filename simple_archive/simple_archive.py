@@ -3,14 +3,20 @@
 import csv
 import logging
 import re
-import shutil
+import zipfile
 from datetime import date
 from pathlib import Path
 from typing import IO, Any, Optional, Union
 from xml.etree.ElementTree import Element, ElementTree, SubElement
-from zipfile import ZIP_DEFLATED, ZipFile
 
 import pydantic
+from typing_extensions import Self
+
+from simple_archive.file_system import (
+    FileSystem,
+    PathFileSystem,
+    ZipFileSystem,
+)
 
 DEFAULT_ENCODING = "utf-8"
 
@@ -55,8 +61,16 @@ class DublinCore(pydantic.RootModel):
                     new_value["language"] = lang.group(1)
                 new_values.append(new_value)
             elif isinstance(value, dict):
-                value["element"] = key
-                new_values.append(value)
+                new_value = {"element": key}
+                for key1, value1 in value.items():
+                    if key1 == "value":
+                        new_value["value"] = value1
+                    elif key1 == "language":
+                        new_value["language"] = value1
+                    else:
+                        new_value["qualifier"] = key1
+                        new_value["value"] = value1
+                new_values.append(new_value)
         return new_values
 
 
@@ -116,7 +130,10 @@ def dcvalue(
 class Metadata(pydantic.BaseModel):
     """Model of metadata."""
 
+    model_config = pydantic.ConfigDict(extra="forbid")
+
     dc: DublinCore
+    local: Optional[DublinCore] = None
 
 
 class Item(pydantic.BaseModel):
@@ -131,6 +148,24 @@ class Item(pydantic.BaseModel):
         if isinstance(v, str):
             return v.split("||") if v else []
         return v
+
+    @pydantic.model_validator(mode="after")
+    def check_if_has_files(self) -> Self:  # noqa: D102
+        if len(self.files) > 0:
+            elem = DublinCoreElement(element="has", value="yes", qualifier="files")
+        else:
+            elem = DublinCoreElement(element="has", value="no", qualifier="files")
+
+        if self.metadata.local is None:
+            self.metadata.local = DublinCore(root=[elem])
+            return self
+        for local_elem in self.metadata.local.root:
+            if local_elem.element == elem.element and local_elem.qualifier == elem.qualifier:
+                local_elem.value = elem.value
+                return self
+
+        self.metadata.local.root.append(elem)
+        return self
 
     @pydantic.model_validator(mode="before")
     @classmethod
@@ -175,55 +210,45 @@ class SimpleArchive:
         return cls(input_folder=csv_path.parent, items=items)
 
     def write_to_path(self, output_path: Path) -> None:  # noqa: D102
-        for item_nr, item in enumerate(self.items):
-            item_path = output_path / f"item_{item_nr:03d}"
-            logger.info("creating '%s' ...", item_path)
-            item_path.mkdir(parents=True, exist_ok=False)
-
-            self.write_contents_file(item, item_path)
-            self.copy_files(item, item_path)
-            build_and_write_metadata(
-                item.metadata.dc, schema="dc", path_or_file=item_path / "dublin_core.xml"
-            )
+        path_fs = PathFileSystem(output_path)
+        self._write_to_fs(path_fs)
 
     def write_to_zip(self, output_path: Path) -> None:  # noqa: D102
-        with ZipFile(output_path, "w", compression=ZIP_DEFLATED) as zipfile:
-            for item_nr, item in enumerate(self.items):
-                item_path = f"item_{item_nr:03d}"
-                # zipfile.mkdir(item_path)
-                # copy files
-                for file_path in item.files:
-                    src_path = self.input_folder / file_path
-                    dst_path = f"{item_path}/{file_path}"
-                    zipfile.write(src_path, dst_path)
-                # write contents
-                contents_path = f"{item_path}/contents"
-                with zipfile.open(contents_path, "w") as contents_file:
-                    for file_path in item.files:
-                        contents_file.write(file_path.name.encode("utf-8"))
-                        contents_file.write(b"\n")
-                # write metadata
-                dublin_core_path = f"{item_path}/dublin_core.xml"
-                logger.info("writing '%s'in zip-archive ", dublin_core_path)
-                with zipfile.open(dublin_core_path, "w") as dublin_core_file:
-                    build_and_write_metadata(
-                        item.metadata.dc, schema="dc", path_or_file=dublin_core_file
-                    )
+        with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+            zip_fs = ZipFileSystem(zipf)
+            self._write_to_fs(zip_fs)
 
-    def write_contents_file(self, item: Item, item_path: Path) -> None:  # noqa: PLR6301, D102
-        contents_path = item_path / "contents"
+    def _write_to_fs(self, fs: FileSystem) -> None:
+        for item_nr, item in enumerate(self.items):
+            item_path = f"item_{item_nr:03d}"
+            fs.mkdir(item_path)
+
+            self._write_contents_file(item, item_path, fs)
+            self._copy_files(item, item_path, fs)
+            self._write_metadata(item.metadata, item_path, fs)
+
+    def _write_contents_file(self, item: Item, item_path: str, fs: FileSystem) -> None:  # noqa: PLR6301
+        contents_path = f"{item_path}/contents"
         logger.info("writing '%s'", contents_path)
-        with contents_path.open(mode="w", encoding="utf-8") as contents_file:
+        with fs.open_text(contents_path) as contents_file:
             for file_path in item.files:
                 contents_file.write(file_path.name)
                 contents_file.write("\n")
 
-    def copy_files(self, item: Item, item_path: Path) -> None:  # noqa: D102
+    def _copy_files(self, item: Item, item_path: str, fs: FileSystem) -> None:
         for file_path in item.files:
             src_path = self.input_folder / file_path
-            dst_path = item_path
+            dst_path = f"{item_path}/{file_path}"
             logger.info("  copying '%s to '%s'", src_path, dst_path)
-            shutil.copy(src_path, dst_path)
+            fs.copy(src_path, dst_path)
+
+    def _write_metadata(self, metadata: Metadata, item_path: str, fs: FileSystem) -> None:  # noqa: PLR6301
+        with fs.open_bytes(f"{item_path}/dublin_core.xml") as dc_file:
+            build_and_write_metadata(metadata.dc, schema="dc", path_or_file=dc_file)
+
+        if metadata.local:
+            with fs.open_bytes(f"{item_path}/metadata_local.xml") as local_file:
+                build_and_write_metadata(metadata.local, schema="local", path_or_file=local_file)
 
 
 def build_and_write_metadata(
@@ -237,4 +262,4 @@ def build_and_write_metadata(
         path_or_file (Union[Path, IO[bytes]]): path or file to write to
     """
     metadata_xml = build_xml(metadata, schema=schema)
-    metadata_xml.write(path_or_file)
+    metadata_xml.write(path_or_file, encoding="utf-8", xml_declaration=True)
