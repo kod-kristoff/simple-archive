@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET  # noqa: N817
 import zipfile
 from io import BytesIO
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -52,6 +53,7 @@ def fixture_simple_archive() -> SimpleArchive:
         "dc.title": "Empty",
         "local.branding": "Språkbanken Text",
         "local.size.info": "2@@tokens",
+        "dcterms.alternative": "x-empty",
     }
     return SimpleArchive(input_folder=Path("tests/data"), items=[Item(**data)])
 
@@ -68,10 +70,22 @@ def test_simple_archive_write_to_path(simple_archive: SimpleArchive) -> None:
 
     root = ET.parse(output / "item_000/metadata_local.xml").getroot()
     _assert_schema_element_value(
-        root, "local", "./dcvalue[@element='branding']", "Språkbanken Text"
+        root,
+        "local",
+        "./dcvalue[@element='branding']",
+        "Språkbanken Text",
     )
     assert root.find("./dcvalue[@element='size'][@qualifier='info']").text == "2@@tokens"  # type: ignore[union-attr]
     assert root.find("./dcvalue[@element='has'][@qualifier='files']").text == "yes"  # type: ignore[union-attr]
+
+    root = ET.parse(output / "item_000/metadata_dcterms.xml").getroot()
+    _assert_schema_element_value(
+        root,
+        "dcterms",
+        "./dcvalue[@element='alternative']",
+        "x-empty",
+        expected_attribs={"language": "*"},
+    )
 
 
 def test_simple_archive_write_to_zip(simple_archive: SimpleArchive) -> None:
@@ -90,10 +104,29 @@ def test_simple_archive_write_to_zip(simple_archive: SimpleArchive) -> None:
             )
             assert root.find("./dcvalue[@element='size'][@qualifier='info']").text == "2@@tokens"  # type: ignore[union-attr]
             assert root.find("./dcvalue[@element='has'][@qualifier='files']").text == "yes"  # type: ignore[union-attr]
+        with zipf.open("item_000/metadata_dcterms.xml") as dcterms_file:
+            root = ET.parse(dcterms_file).getroot()
+            _assert_schema_element_value(
+                root,
+                "dcterms",
+                "./dcvalue[@element='alternative']",
+                "x-empty",
+                expected_attribs={"language": "*"},
+            )
 
 
 def _assert_schema_element_value(
-    root: ET.Element, expected_schema: str, path: str, expected_text: str
+    root: ET.Element,
+    expected_schema: str,
+    path: str,
+    expected_text: str,
+    expected_attribs: Optional[dict[str, str]] = None,
 ) -> None:
     assert root.find(".").attrib["schema"] == expected_schema  # type: ignore[union-attr]
-    assert root.find(path).text == expected_text  # type: ignore[union-attr]
+    elem = root.find(path)
+    assert elem is not None
+    assert elem.text == expected_text
+    if expected_attribs:
+        for key, value in expected_attribs.items():
+            assert key in elem.attrib
+            assert elem.attrib[key] == value

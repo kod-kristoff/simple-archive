@@ -134,6 +134,18 @@ class Metadata(pydantic.BaseModel):
 
     dc: DublinCore
     local: Optional[DublinCore] = None
+    dcterms: Optional[DublinCore] = None
+
+    @pydantic.field_validator("dcterms")
+    @classmethod
+    def set_language(cls, v: Optional[DublinCore]) -> Optional[DublinCore]:
+        """Set language if not set."""
+        if not v:
+            return v
+        for elem in v.root:
+            if elem.language is None:
+                elem.language = "*"
+        return v
 
 
 class Item(pydantic.BaseModel):
@@ -249,6 +261,11 @@ class SimpleArchive:
         if metadata.local:
             with fs.open_bytes(f"{item_path}/metadata_local.xml") as local_file:
                 build_and_write_metadata(metadata.local, schema="local", path_or_file=local_file)
+        if metadata.dcterms:
+            with fs.open_bytes(f"{item_path}/metadata_dcterms.xml") as dcterms_file:
+                build_and_write_metadata(
+                    metadata.dcterms, schema="dcterms", path_or_file=dcterms_file
+                )
 
 
 def build_and_write_metadata(
