@@ -131,3 +131,4 @@ poetry.lock
 
 /input/
 /output/
+/tests/data/gen/
