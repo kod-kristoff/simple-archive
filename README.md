@@ -47,9 +47,18 @@ Run `safar <path/to/csv>`
 
 ### CSV Format
 
-The expected CSV format is shown below where the metadata is given in the form `namespace.element[.qualifier[.language]]`.
+The expected CSV format is shown below where the metadata is given in the form `namespace.element[.qualifier]`.
 
-**NOTE** Currently only the `dc` namespace is handled.
+Language can be specified by `namespace.element[language]` or `namespace.element.qualifier[language]`
+
+Example: `dc.description[sv_SE]`
+
+Supported namespaces:
+
+- `dc` (required)
+- `local`
+- `metashare`
+- `dcterms`
 
 ```csv
 files,dc.title,dc.date.issued,...
