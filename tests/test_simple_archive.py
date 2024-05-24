@@ -54,6 +54,7 @@ def fixture_simple_archive() -> SimpleArchive:
         "local.branding": "Språkbanken Text",
         "local.size.info": "2@@tokens",
         "dcterms.alternative": "x-empty",
+        "metashare.ResourceInfo#ContentInfo.mediaType": "text",
     }
     return SimpleArchive(input_folder=Path("tests/data"), items=[Item(**data)])
 
@@ -87,6 +88,15 @@ def test_simple_archive_write_to_path(simple_archive: SimpleArchive) -> None:
         expected_attribs={"language": "*"},
     )
 
+    root = ET.parse(output / "item_000/metadata_metashare.xml").getroot()
+    _assert_schema_element_value(
+        root,
+        "metashare",
+        "./dcvalue[@element='ResourceInfo#ContentInfo'][@qualifier='mediaType']",
+        "text",
+        expected_attribs={"language": "en_US"},
+    )
+
 
 def test_simple_archive_write_to_zip(simple_archive: SimpleArchive) -> None:
     output = Path("tests/data/gen/simple_archive_write_to_zip.zip")
@@ -112,6 +122,15 @@ def test_simple_archive_write_to_zip(simple_archive: SimpleArchive) -> None:
                 "./dcvalue[@element='alternative']",
                 "x-empty",
                 expected_attribs={"language": "*"},
+            )
+        with zipf.open("item_000/metadata_metashare.xml") as metashare_file:
+            root = ET.parse(metashare_file).getroot()
+            _assert_schema_element_value(
+                root,
+                "metashare",
+                "./dcvalue[@element='ResourceInfo#ContentInfo'][@qualifier='mediaType']",
+                "text",
+                expected_attribs={"language": "en_US"},
             )
 
 
