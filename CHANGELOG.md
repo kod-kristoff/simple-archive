@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Added
+
+- Extend dc supported fields (Issue #6)
+- Support local namespace (Issue #8)
+- Support dcterms namespace (Issue #7)
+- Support metashare namespace (Issue #8)
+
+### Documentation
+
+- Update docs
+
+### Fixed
+
+- Handle empty string correct
+
+### Testing
+
+- Add directory for generated test data
+
 ## [0.2.1] - 2024-05-16
 
 ### Documentation
